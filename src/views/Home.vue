@@ -1,6 +1,5 @@
 <template>
     <div class="home">
-      <h1>Buat Sendiri </h1>
       <CustomForm />
     </div>
   </template>

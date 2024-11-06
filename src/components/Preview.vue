@@ -39,11 +39,10 @@
   
       <!-- Optional Sections -->
       <section v-if="customData.optionalSections && customData.optionalSections.length" class="max-w-lg w-full mx-auto mt-4">
-        <h3 class="text-xl font-semibold text-center">Konten Tambahan:</h3>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
           <div v-for="(section, index) in customData.optionalSections" :key="index" class="p-4 border-2 border-gray-300 rounded-lg shadow-lg transition-transform transform hover:scale-105">
-            <p v-if="section.text" class="text-gray-700 mb-2">{{ section.text }}</p>
             <img v-if="section.image" :src="section.image" class="w-full h-auto rounded-lg" alt="Gambar Tambahan">
+            <p v-if="section.text" class="text-gray-100 mb-2">{{ section.text }}</p>
           </div>
         </div>
       </section>

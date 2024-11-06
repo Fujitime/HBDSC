@@ -12,6 +12,7 @@
     "animate.css": "^4.1.1",
     "firebase": "^10.14.1",
     "firebase-tools": "^13.22.0",
+    "rollup": "^4.24.4",
     "swiper": "^11.0.5",
     "vue": "^3.3.11",
     "vue-awesome-swiper": "^5.0.1",

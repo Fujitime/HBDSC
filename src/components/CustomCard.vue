@@ -1,11 +1,16 @@
 <template>
-  <Ballon/>
-  <div class="flex flex-col items-center justify-center min-h-screen bg-gray-900 p-4">
+  <Ballon />
+  <div class="flex flex-col items-center justify-center min-h-screen bg-gray-900 text-gray-200 p-4">
+    <!-- Confetti Canvas -->
+    <canvas id="canvas" class="absolute top-0 left-0 w-full h-full z-20"></canvas>
+
+    <!-- Audio Element for Background Music -->
+    <audio ref="backgroundMusic" :src="musicSrc" preload="auto" loop></audio>
+
     <div v-if="loading" class="loader">Loading...</div>
     <div v-if="error" class="text-red-600 text-center mt-2">{{ error }}</div>
-    
-    
-    <div v-if="!loading && !error && customData.name" class="border-4 border-red-500 rounded-lg shadow-md p-8 max-w-lg w-full mx-auto relative happy-birthday-card moving-border">
+
+    <div v-if="!loading && !error && customData.name" class="border-4 border-red-500 rounded-lg shadow-md p-8 max-w-lg w-full mx-auto relative happy-birthday-card moving-border bg-gray-800">
       <div class="text-center mb-4 relative">
         <div class="relative inline-block">
           <img :src="customData.photo" alt="Foto Profil"
@@ -42,7 +47,7 @@
     <!-- Optional Sections -->
     <section v-if="customData.optionalSections && customData.optionalSections.length" class="max-w-lg w-full mx-auto mt-4">
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-        <div v-for="(section, index) in customData.optionalSections" :key="index" class="p-4 border-2 border-gray-300 rounded-lg shadow-lg transition-transform transform hover:scale-105">
+        <div v-for="(section, index) in customData.optionalSections" :key="index" class="p-4 border-2 border-gray-300 rounded-lg shadow-lg transition-transform transform hover:scale-105 bg-gray-800">
           <img v-if="section.image" :src="section.image" class="w-full h-auto rounded-lg" alt="Gambar Tambahan">
           <p v-if="section.text" class="text-gray-100 mb-2">{{ section.text }}</p>
         </div>
@@ -56,8 +61,9 @@
 <script>
 import { doc, getDoc } from "firebase/firestore";
 import { firestore } from "../firebase"; 
-import CryptoJS from "crypto-js"; // Import library enkripsi-dekripsi
+import CryptoJS from "crypto-js"; 
 import Ballon from "./Ballon.vue";
+import backgroundMusic from '../assets/music.mp3';
 
 export default {
   components: {
@@ -76,6 +82,9 @@ export default {
       loading: true, // State untuk loading
       error: null, // State untuk penanganan kesalahan
       showStreak: false,
+      musicSrc: backgroundMusic,
+      isMusicPlaying: false,
+      hasInteracted: false, // Untuk melacak apakah pengguna telah berinteraksi
     };
   },
   computed: {
@@ -101,8 +110,15 @@ export default {
     this.intervalId = setInterval(() => {
       this.showStreak = !this.showStreak;
     }, 5000);
+
+    // Initialize confetti effect
+    this.initConfetti();
+
+    // Tunggu interaksi pengguna sebelum memutar musik
+    window.addEventListener('click', this.startMusicAfterInteraction, { once: true });
+    window.addEventListener('keydown', this.startMusicAfterInteraction, { once: true });
   },
-  beforeUnmount() { // Perubahan dari beforeDestroy di Vue 3
+  beforeUnmount() {
     clearInterval(this.intervalId);
   },
   async created() {
@@ -152,10 +168,94 @@ export default {
     decryptData(encryptedData) {
       const bytes = CryptoJS.AES.decrypt(encryptedData, 'secretKey'); // Gantilah 'secretKey' dengan kunci yang sesuai
       return bytes.toString(CryptoJS.enc.Utf8); // Mengembalikan data dalam bentuk string
-    }
+    },
+
+    // Initialize confetti effect
+    initConfetti() {
+      const canvas = document.getElementById("canvas");
+      const ctx = canvas.getContext("2d");
+      let confetti = [];
+      const confettiCount = 300;
+      const gravity = 0.5;
+      const terminalVelocity = 5;
+      const drag = 0.075;
+      const colors = [
+        { front: 'red', back: 'darkred' },
+        { front: 'green', back: 'darkgreen' },
+        { front: 'blue', back: 'darkblue' },
+        { front: 'yellow', back: 'darkyellow' },
+        { front: 'orange', back: 'darkorange' },
+        { front: 'pink', back: 'darkpink' },
+        { front: 'purple', back: 'darkpurple' },
+        { front: 'turquoise', back: 'darkturquoise' }
+      ];
+
+      const randomRange = (min, max) => Math.random() * (max - min) + min;
+
+      // Initialize confetti particles
+      const initConfettiParticles = () => {
+        confetti = [];
+        for (let i = 0; i < confettiCount; i++) {
+          const color = colors[Math.floor(Math.random() * colors.length)];
+          const particle = {
+            position: { x: randomRange(0, canvas.width), y: randomRange(0, canvas.height) },
+            velocity: { x: randomRange(-2, 2), y: randomRange(-2, 2) },
+            size: randomRange(5, 15),
+            angle: randomRange(0, 360),
+            angularVelocity: randomRange(-0.1, 0.1),
+            color: color.front,
+            backgroundColor: color.back,
+          };
+          confetti.push(particle);
+        }
+      };
+
+      // Update and draw confetti particles
+      const updateAndDrawConfetti = () => {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        confetti.forEach(particle => {
+          particle.velocity.y += gravity;
+          particle.velocity.y = Math.min(particle.velocity.y, terminalVelocity);
+          particle.position.x += particle.velocity.x;
+          particle.position.y += particle.velocity.y;
+          particle.angle += particle.angularVelocity;
+          ctx.save();
+          ctx.translate(particle.position.x, particle.position.y);
+          ctx.rotate(particle.angle);
+          ctx.beginPath();
+          ctx.rect(-particle.size / 2, -particle.size / 2, particle.size, particle.size);
+          ctx.fillStyle = particle.color;
+          ctx.fill();
+          ctx.restore();
+        });
+        confetti = confetti.filter(p => p.position.y < canvas.height); // Filter particles that are out of view
+      };
+
+      // Adjust canvas size on resize
+      const resizeCanvas = () => {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+      };
+      
+      window.addEventListener("resize", resizeCanvas);
+
+      // Start confetti animation
+      resizeCanvas();
+      initConfettiParticles();
+      setInterval(updateAndDrawConfetti, 1000 / 60); // 60 FPS
+    },
+
+    // Play the background music after user interaction
+    startMusicAfterInteraction() {
+      if (!this.hasInteracted) {
+        this.$refs.backgroundMusic.play();
+        this.hasInteracted = true;
+      }
+    },
   },
 };
 </script>
+
 
 
 <style scoped>

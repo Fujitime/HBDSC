@@ -1,6 +1,6 @@
 <template>
-  <div :class="['flex justify-center items-center min-h-screen transition-all duration-300', darkMode ? 'bg-gray-800' : 'bg-gradient-to-r from-indigo-400 to-purple-600']">
-    <div class="form-container bg-white dark:bg-gray-900 p-8 rounded-lg shadow-lg max-w-7xl w-full">
+  <div class="flex justify-center items-center min-h-screen bg-gray-800">
+    <div class="form-container bg-gray-900 p-8 rounded-lg shadow-lg max-w-7xl w-full">
       
       <!-- Form and Preview section, arranged side by side on desktop and larger -->
       <div class="flex flex-col md:flex-row md:justify-between gap-8">
@@ -36,7 +36,7 @@
           </div>
 
           <div>
-            <label for="dateOfBirth" class="block text-gray-600 dark:text-red-300 font-medium mb-2">Tanggal Lahir-nya:</label>
+            <label for="dateOfBirth" class="block text-red-600 dark:text-red-300 font-medium mb-2">Tanggal Lahir-nya:</label>
             <input
               type="date"
               v-model="userData.dateOfBirth"

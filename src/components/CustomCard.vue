@@ -1,7 +1,9 @@
 <template>
+  <Ballon/>
   <div class="flex flex-col items-center justify-center min-h-screen bg-gray-900 p-4">
     <div v-if="loading" class="loader">Loading...</div>
     <div v-if="error" class="text-red-600 text-center mt-2">{{ error }}</div>
+    
     
     <div v-if="!loading && !error && customData.name" class="border-4 border-red-500 rounded-lg shadow-md p-8 max-w-lg w-full mx-auto relative happy-birthday-card moving-border">
       <div class="text-center mb-4 relative">
@@ -55,8 +57,12 @@
 <script>
 import { doc, getDoc } from "firebase/firestore";
 import { firestore } from "../firebase"; 
+import Ballon from "./Ballon.vue";
 
 export default {
+  components: {
+      Ballon,
+    },
   data() {
     return {
       customData: {

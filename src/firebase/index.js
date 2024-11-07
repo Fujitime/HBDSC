@@ -5,13 +5,12 @@ import { getStorage } from "firebase/storage";
 
 // Konfigurasi Firebase
 const firebaseConfig = {
-  apiKey: "AIzaSyBCc5ioP4l80rNZ3AAeIPSEBAQqaSE4UOs",
-  authDomain: "hbds-2ca8d.firebaseapp.com",
-  projectId: "hbds-2ca8d",
-  storageBucket: "hbds-2ca8d.appspot.com",
-  messagingSenderId: "1036617409560",
-  appId: "1:1036617409560:web:48e0075a1a83783d4b8f6d",
-  measurementId: "G-E9C2CTPE38"
+  apiKey: "AIzaSyBDlDZCQOR4DBejHFwJSq-BCIYjxl1Qv1A",
+  authDomain: "vue-blog-1b72c.firebaseapp.com",
+  projectId: "vue-blog-1b72c",
+  storageBucket: "vue-blog-1b72c.appspot.com",
+  messagingSenderId: "902033285642",
+  appId: "1:902033285642:web:89208a21a8f7e87b05f5f3"
 };
 
 // Inisialisasi Firebase

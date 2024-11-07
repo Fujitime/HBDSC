@@ -53,16 +53,16 @@
   </div>
 </template>
 
-
 <script>
 import { doc, getDoc } from "firebase/firestore";
 import { firestore } from "../firebase"; 
+import CryptoJS from "crypto-js"; // Import library enkripsi-dekripsi
 import Ballon from "./Ballon.vue";
 
 export default {
   components: {
-      Ballon,
-    },
+    Ballon,
+  },
   data() {
     return {
       customData: {
@@ -83,7 +83,7 @@ export default {
       if (this.customData.dateOfBirth) {
         const today = new Date();
         const birthDate = new Date(this.customData.dateOfBirth);
-        
+
         let age = today.getFullYear() - birthDate.getFullYear();
         const m = today.getMonth() - birthDate.getMonth();
         const d = today.getDate() - birthDate.getDate();
@@ -91,7 +91,7 @@ export default {
         if (m < 0 || (m === 0 && d < 0)) {
           age--;
         }
-        
+
         return age;
       }
       return null;
@@ -102,7 +102,7 @@ export default {
       this.showStreak = !this.showStreak;
     }, 5000);
   },
-  beforeDestroy() {
+  beforeUnmount() { // Perubahan dari beforeDestroy di Vue 3
     clearInterval(this.intervalId);
   },
   async created() {
@@ -120,8 +120,22 @@ export default {
       const docSnap = await getDoc(docRef);
 
       if (docSnap.exists()) {
-        this.customData = docSnap.data(); // Set data ke customData
-        console.log("Fetched Data:", this.customData);
+        const encryptedData = docSnap.data(); // Ambil data terenkripsi dari Firestore
+
+        // Dekripsi data yang terenkripsi
+        this.customData.name = this.decryptData(encryptedData.name);
+        this.customData.message = this.decryptData(encryptedData.message);
+        this.customData.dateOfBirth = this.decryptData(encryptedData.dateOfBirth);
+        this.customData.photo = encryptedData.photo;
+        this.customData.createdAt = encryptedData.createdAt;
+
+        // Dekripsi data optional sections
+        this.customData.optionalSections = encryptedData.optionalSections.map(section => ({
+          text: section.text ? this.decryptData(section.text) : '',
+          image: section.image,
+        }));
+
+        console.log("Fetched and Decrypted Data:", this.customData);
       } else {
         console.error("Dokumen tidak ditemukan!");
         this.error = "Kartu tidak ditemukan. Silakan coba nama lain.";
@@ -133,8 +147,16 @@ export default {
       this.loading = false; // Reset loading state
     }
   },
+  methods: {
+    // Fungsi untuk mendekripsi data yang terenkripsi
+    decryptData(encryptedData) {
+      const bytes = CryptoJS.AES.decrypt(encryptedData, 'secretKey'); // Gantilah 'secretKey' dengan kunci yang sesuai
+      return bytes.toString(CryptoJS.enc.Utf8); // Mengembalikan data dalam bentuk string
+    }
+  },
 };
 </script>
+
 
 <style scoped>
 .loader {

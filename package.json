@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "animate.css": "^4.1.1",
+    "crypto-js": "^4.2.0",
     "firebase": "^10.14.1",
     "firebase-tools": "^13.22.0",
     "rollup": "^4.24.4",

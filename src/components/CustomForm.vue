@@ -36,7 +36,7 @@
           </div>
 
           <div>
-            <label for="dateOfBirth" class="block text-gray-600 dark:text-gray-300 font-medium mb-2">Tanggal Ulang Tahun:</label>
+            <label for="dateOfBirth" class="block text-gray-600 dark:text-red-300 font-medium mb-2">Tanggal Lahir-nya:</label>
             <input
               type="date"
               v-model="userData.dateOfBirth"
@@ -148,12 +148,13 @@
 <script>
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { doc, setDoc, getDoc } from "firebase/firestore";
-import { firestore, storage } from "../firebase"; // Import Firestore and Storage from firebase.js
-import Preview from './Preview.vue'; // Import the Preview component
+import { firestore, storage } from "../firebase"; // Mengimpor Firestore dan Storage dari firebase.js
+import CryptoJS from "crypto-js"; // Untuk enkripsi data
+import Preview from './Preview.vue'; // Komponen untuk pratinjau
 
 export default {
   components: {
-    Preview, // Register the Preview component
+    Preview, // Mendaftarkan komponen Preview
   },
   data() {
     return {
@@ -161,9 +162,10 @@ export default {
         name: "",
         dateOfBirth: "",
         message: "",
-        photo: null, // To store the uploaded photo URL for preview
+        photo: null, // Menyimpan URL foto yang diupload untuk pratinjau
+        photoFile: null, // Menyimpan referensi file foto asli untuk diupload
       },
-      optionalSections: [{ additionalText: "", additionalImage: null, additionalImageFile: null }], // Add additionalImageFile to keep file reference
+      optionalSections: [{ additionalText: "", additionalImage: null, additionalImageFile: null }], // Menyimpan bagian opsional
       loading: false,
       error: null,
       success: false,
@@ -174,108 +176,165 @@ export default {
     toggleDarkMode() {
       this.darkMode = !this.darkMode; 
     },
-    // Handle main photo upload
+    // Menangani upload foto utama
     handleFileUpload(event) {
       const file = event.target.files[0];
-      this.userData.photo = URL.createObjectURL(file); // Create a URL for preview
-      this.userData.photoFile = file; // Keep original file reference for upload
+      this.userData.photo = URL.createObjectURL(file); // Membuat URL untuk pratinjau
+      this.userData.photoFile = file; // Menyimpan file asli untuk diupload
     },
-    // Handle additional image upload
+    // Menangani upload gambar tambahan
     handleAdditionalImageUpload(event, index) {
       const file = event.target.files[0];
-      this.optionalSections[index].additionalImage = URL.createObjectURL(file); // Create URL for preview
-      this.optionalSections[index].additionalImageFile = file; // Keep original file reference for upload
+      this.optionalSections[index].additionalImage = URL.createObjectURL(file); // Membuat URL untuk pratinjau
+      this.optionalSections[index].additionalImageFile = file; // Menyimpan file gambar untuk diupload
     },
     addSection() {
-      this.optionalSections.push({ additionalText: "", additionalImage: null, additionalImageFile: null }); // Add additionalImageFile
+      this.optionalSections.push({ additionalText: "", additionalImage: null, additionalImageFile: null }); // Menambahkan bagian opsional baru
     },
     removeSection(index) {
-      this.optionalSections.splice(index, 1); 
+      this.optionalSections.splice(index, 1); // Menghapus bagian opsional
     },
     async submitForm() {
-  this.error = null;
-  this.success = false;
-  this.loading = true;
+      this.error = null;
+      this.success = false;
+      this.loading = true;
 
-  // Validate form fields
-  if (!this.userData.name || !this.userData.dateOfBirth || !this.userData.message || !this.userData.photoFile) {
-    this.error = "Semua field utama kudu diisi!";
-    this.loading = false;
-    return;
-  }
-
-  // Check if the user name already exists
-  const userRef = doc(firestore, "cards", this.userData.name);
-  const userDoc = await getDoc(userRef);
-
-  if (userDoc.exists()) {
-    this.error = "Nama sudah ada. Silakan pilih nama lain.";
-    this.loading = false;
-    return;
-  }
-
-  // Upload main photo
-  const mainPhotoRef = ref(storage, `uploads/${this.userData.photoFile.name}`);
-
-  try {
-    const uploadSnapshot = await uploadBytes(mainPhotoRef, this.userData.photoFile);
-    const mainPhotoURL = await getDownloadURL(uploadSnapshot.ref);
-
-    // Prepare data for Firestore
-    const cardData = {
-      name: this.userData.name,
-      dateOfBirth: this.userData.dateOfBirth,
-      message: this.userData.message,
-      photo: mainPhotoURL,
-      createdAt: new Date(),
-      optionalSections: []
-    };
-
-    // Process each optional section
-    for (const section of this.optionalSections) {
-      const optionalData = {
-        text: section.additionalText,
-        image: ""
-      };
-
-      // Upload optional image if it exists
-      if (section.additionalImageFile) {
-        const additionalImageRef = ref(storage, `uploads/${section.additionalImageFile.name}`);
-        const additionalUploadSnapshot = await uploadBytes(additionalImageRef, section.additionalImageFile);
-        optionalData.image = await getDownloadURL(additionalUploadSnapshot.ref);
+      // Validasi form
+      if (!this.userData.name || !this.userData.dateOfBirth || !this.userData.message || !this.userData.photoFile) {
+        this.error = "Semua field utama harus diisi!";
+        this.loading = false;
+        return;
       }
 
-      // Push optional data to cardData optionalSections
-      cardData.optionalSections.push(optionalData);
+      // Enkripsi data (nama, pesan, tanggal lahir)
+      const encryptedName = CryptoJS.AES.encrypt(this.userData.name, 'secretKey').toString();
+      const encryptedMessage = CryptoJS.AES.encrypt(this.userData.message, 'secretKey').toString();
+      const encryptedDateOfBirth = CryptoJS.AES.encrypt(this.userData.dateOfBirth, 'secretKey').toString();
+
+      // Membuat ID dokumen unik menggunakan timestamp dan string acak
+      const documentId = this.generateDocumentId(); // Generate ID unik untuk dokumen
+
+      // Cek apakah nama sudah ada di Firestore
+      const userRef = doc(firestore, "cards", documentId); // Menggunakan ID unik sebagai ID dokumen
+      const userDoc = await getDoc(userRef);
+
+      if (userDoc.exists()) {
+        this.error = "Nama sudah ada. Silakan pilih nama lain.";
+        this.loading = false;
+        return;
+      }
+
+      // Upload foto utama ke Firebase Storage
+      const mainPhotoRef = ref(storage, `uploads/${this.userData.photoFile.name}`);
+      
+      try {
+        const uploadSnapshot = await uploadBytes(mainPhotoRef, this.userData.photoFile);
+
+        // Ambil URL dari foto yang diupload
+        const mainPhotoURL = await getDownloadURL(uploadSnapshot.ref);
+
+        // Menyusun data untuk disimpan ke Firestore
+        const cardData = {
+          name: encryptedName, // Menyimpan nama terenkripsi
+          message: encryptedMessage, // Menyimpan pesan terenkripsi
+          dateOfBirth: encryptedDateOfBirth, // Menyimpan tanggal lahir terenkripsi
+          photo: mainPhotoURL, // Menyimpan URL foto yang diupload
+          createdAt: new Date(),
+          optionalSections: [] // Menyimpan bagian opsional yang akan diproses
+        };
+
+        // Proses setiap bagian opsional
+        for (const section of this.optionalSections) {
+          const optionalData = {
+            text: section.additionalText ? CryptoJS.AES.encrypt(section.additionalText, 'secretKey').toString() : '',
+            image: ""
+          };
+
+          // Upload gambar opsional jika ada
+          if (section.additionalImageFile) {
+            const additionalImageRef = ref(storage, `uploads/${section.additionalImageFile.name}`);
+            const additionalUploadSnapshot = await uploadBytes(additionalImageRef, section.additionalImageFile);
+            optionalData.image = await getDownloadURL(additionalUploadSnapshot.ref); // Ambil URL gambar opsional yang diupload
+          }
+
+          // Tambahkan data opsional ke cardData
+          cardData.optionalSections.push(optionalData);
+        }
+
+        // Simpan data ke Firestore
+        await setDoc(userRef, cardData);
+
+        this.success = true;
+
+        // Navigasi ke halaman baru setelah data disimpan
+        this.$router.push(`/card/${documentId}`); // Gunakan ID dokumen di URL
+
+        // Bersihkan form setelah navigasi
+        this.userData = {
+          name: "",
+          dateOfBirth: "",
+          message: "",
+          photo: null,
+        };
+        this.optionalSections = [{ additionalText: "", additionalImage: null, additionalImageFile: null }];
+      } catch (error) {
+        console.error("Error uploading file or saving data:", error);
+        this.error = "Terjadi kesalahan saat mengunggah file atau menyimpan data. Silakan coba lagi.";
+      } finally {
+        this.loading = false;
+      }
+    },
+
+    // Fungsi untuk menghasilkan ID dokumen unik
+    generateDocumentId() {
+      // Membuat ID unik menggunakan timestamp dan string acak
+      const randomString = Math.random().toString(36).substring(2, 15); // Membuat string acak
+      const timestamp = Date.now().toString(36); // Menggunakan timestamp sebagai bagian dari ID
+      return `${timestamp}-${randomString}`; // Menggabungkan timestamp dan string acak
+    },
+
+    // Mengambil dan mendekripsi data dari Firestore
+    async fetchData() {
+      const documentId = this.$route.params.name; // Mendapatkan ID dokumen dari parameter route
+      const userRef = doc(firestore, "cards", documentId);
+
+      // Mengambil data dari Firestore
+      const docSnap = await getDoc(userRef);
+
+      if (docSnap.exists()) {
+        const encryptedData = docSnap.data();
+
+        // Dekripsi data
+        const decryptedName = this.decryptData(encryptedData.name);
+        const decryptedMessage = this.decryptData(encryptedData.message);
+        const decryptedDateOfBirth = this.decryptData(encryptedData.dateOfBirth);
+
+        // Menampilkan data yang telah didekripsi
+        this.customData = {
+          name: decryptedName,
+          message: decryptedMessage,
+          dateOfBirth: decryptedDateOfBirth,
+          photo: encryptedData.photo,
+          createdAt: encryptedData.createdAt,
+          optionalSections: encryptedData.optionalSections || []
+        };
+      } else {
+        console.error("Dokumen tidak ditemukan!");
+        this.error = "Kartu tidak ditemukan. Silakan coba nama lain.";
+      }
+      this.loading = false;
+    },
+
+    // Fungsi untuk mendekripsi data
+    decryptData(encryptedData) {
+      const bytes = CryptoJS.AES.decrypt(encryptedData, 'secretKey');
+      return bytes.toString(CryptoJS.enc.Utf8);
     }
-
-    // Save data to Firestore
-    await setDoc(userRef, cardData);
-
-    this.success = true;
-
-    // Navigate to the new route after saving the card data
-    this.$router.push(`/card/${this.userData.name}`);
-
-    // After navigation, clear the form data
-    this.userData = {
-      name: "",
-      dateOfBirth: "",
-      message: "",
-      photo: null,
-    };
-    this.optionalSections = [{ additionalText: "", additionalImage: null, additionalImageFile: null }];
-  } catch (error) {
-    console.error("Error uploading file or saving data:", error);
-    this.error = "Terjadi kesalahan saat mengunggah file atau menyimpan data. Silakan coba lagi.";
-  } finally {
-    this.loading = false;
-  }
-}
-
   },
 };
 </script>
+
+
 
 <style scoped>
 .form-container {
